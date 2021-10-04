@@ -251,6 +251,7 @@ contract HuhToken is Context, IBEP20, Ownable {
     }
 
     function setRefCodeRegistrator(address refCodeRegistrator_) external onlyOwner {
+        require(refCodeRegistrator_ != address(0), "setRefCodeRegistrator: Zero address not allowed!");
         refCodeRegistrator = refCodeRegistrator_;
     }
 
@@ -532,7 +533,7 @@ contract HuhToken is Context, IBEP20, Ownable {
         if (launchedAt > 0) {
             uint256 gas = distributorGas;
             require(gasleft() >= gas, "Out of gas, please increase gas limit and retry!");
-            try distributor.process{gas:distributorGas}(distributorGas) {} catch {}
+            try distributor.process{gas:distributorGas}() {} catch {}
         }
 
         if (launchedAt == 0 && recipient == pcsV2Pair) {
@@ -771,8 +772,8 @@ contract HuhToken is Context, IBEP20, Ownable {
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_excluded[i] == account) {
                 _excluded[i] = _excluded[_excluded.length - 1];
-                _tOwned[account] = 0;
                 _rOwned[account] = reflectionFromToken(_tOwned[account]);
+                _tOwned[account] = 0;
                 _isExcluded[account] = false;
                 _excluded.pop();
                 break;

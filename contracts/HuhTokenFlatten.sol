@@ -429,7 +429,7 @@ pragma solidity ^0.8.0;
 
 interface IDividendDistributor {
     function deposit() external payable;
-    function process(uint256 gas) external;
+    function process() external;
     function setShare(address shareholder, uint256 amount) external;
 }
 
@@ -462,16 +462,9 @@ contract DividendDistributor is IDividendDistributor {
     uint256 public totalDividends;
     uint256 public totalDistributed;
     uint256 public dividendsPerShare;
-    uint256 public dividendsPerShareAccuracyFactor = 10 ** 36;
+    uint256 public constant DIVIDENDS_PER_SHARE_ACCURACY_FACTOR = 10 ** 36;
 
     uint256 currentIndex;
-
-    bool initialized;
-    modifier initialization() {
-        require(!initialized);
-        _;
-        initialized = true;
-    }
 
     modifier onlyToken() {
         require(msg.sender == _token); _;
@@ -504,10 +497,10 @@ contract DividendDistributor is IDividendDistributor {
     function deposit() public payable override onlyToken {
         uint256 amount = msg.value;
         totalDividends = totalDividends.add(amount);
-        dividendsPerShare = dividendsPerShare.add(dividendsPerShareAccuracyFactor.mul(amount).div(totalShares));
+        dividendsPerShare = dividendsPerShare.add(DIVIDENDS_PER_SHARE_ACCURACY_FACTOR.mul(amount).div(totalShares));
     }
 
-    function process(uint256 gas) public override onlyToken {
+    function process() public override onlyToken {
         uint256 shareholderCount = shareholders.length;
 
         if (shareholderCount == 0)
@@ -563,7 +556,7 @@ contract DividendDistributor is IDividendDistributor {
     }
 
     function getCumulativeDividends(uint256 share) private view returns (uint256) {
-        return share.mul(dividendsPerShare).div(dividendsPerShareAccuracyFactor);
+        return share.mul(dividendsPerShare).div(DIVIDENDS_PER_SHARE_ACCURACY_FACTOR);
     }
 
     function addShareholder(address shareholder) private {
@@ -1040,6 +1033,7 @@ contract HuhToken is Context, IBEP20, Ownable {
     }
 
     function setRefCodeRegistrator(address refCodeRegistrator_) external onlyOwner {
+        require(refCodeRegistrator_ != address(0), "setRefCodeRegistrator: Zero address not allowed!");
         refCodeRegistrator = refCodeRegistrator_;
     }
 
@@ -1321,7 +1315,7 @@ contract HuhToken is Context, IBEP20, Ownable {
         if (launchedAt > 0) {
             uint256 gas = distributorGas;
             require(gasleft() >= gas, "Out of gas, please increase gas limit and retry!");
-            try distributor.process{gas:distributorGas}(distributorGas) {} catch {}
+            try distributor.process{gas:distributorGas}() {} catch {}
         }
 
         if (launchedAt == 0 && recipient == pcsV2Pair) {
@@ -1560,8 +1554,8 @@ contract HuhToken is Context, IBEP20, Ownable {
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_excluded[i] == account) {
                 _excluded[i] = _excluded[_excluded.length - 1];
-                _tOwned[account] = 0;
                 _rOwned[account] = reflectionFromToken(_tOwned[account]);
+                _tOwned[account] = 0;
                 _isExcluded[account] = false;
                 _excluded.pop();
                 break;

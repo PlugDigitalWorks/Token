@@ -27,16 +27,9 @@ contract DividendDistributor is IDividendDistributor {
     uint256 public totalDividends;
     uint256 public totalDistributed;
     uint256 public dividendsPerShare;
-    uint256 public dividendsPerShareAccuracyFactor = 10 ** 36;
+    uint256 public constant DIVIDENDS_PER_SHARE_ACCURACY_FACTOR = 10 ** 36;
 
     uint256 currentIndex;
-
-    bool initialized;
-    modifier initialization() {
-        require(!initialized);
-        _;
-        initialized = true;
-    }
 
     modifier onlyToken() {
         require(msg.sender == _token); _;
@@ -69,10 +62,10 @@ contract DividendDistributor is IDividendDistributor {
     function deposit() public payable override onlyToken {
         uint256 amount = msg.value;
         totalDividends = totalDividends.add(amount);
-        dividendsPerShare = dividendsPerShare.add(dividendsPerShareAccuracyFactor.mul(amount).div(totalShares));
+        dividendsPerShare = dividendsPerShare.add(DIVIDENDS_PER_SHARE_ACCURACY_FACTOR.mul(amount).div(totalShares));
     }
 
-    function process(uint256 gas) public override onlyToken {
+    function process() public override onlyToken {
         uint256 shareholderCount = shareholders.length;
 
         if (shareholderCount == 0)
@@ -128,7 +121,7 @@ contract DividendDistributor is IDividendDistributor {
     }
 
     function getCumulativeDividends(uint256 share) private view returns (uint256) {
-        return share.mul(dividendsPerShare).div(dividendsPerShareAccuracyFactor);
+        return share.mul(dividendsPerShare).div(DIVIDENDS_PER_SHARE_ACCURACY_FACTOR);
     }
 
     function addShareholder(address shareholder) private {
