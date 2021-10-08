@@ -824,31 +824,31 @@ contract HuhToken is Context, IBEP20, Ownable {
     //  | Whitelisted Sell          | 5    | 1   | 3    | 1          |              | 10      |
     //  +---------------------------+------+-----+------+------------+--------------+---------+
 
-    uint256 public liquidityFeeOnBuy = 1;
-    uint256 public BNBreflectionFeeOnBuy = 5;
-    uint256 public marketingFeeOnBuy = 1;
-    uint256 public HuHdistributionFeeOnBuy = 8;
+    uint8 public liquidityFeeOnBuy = 1;
+    uint8 public BNBreflectionFeeOnBuy = 5;
+    uint8 public marketingFeeOnBuy = 1;
+    uint8 public HuHdistributionFeeOnBuy = 8;
 
-    uint256 public liquidityFeeOnBuyWhiteListed_A = 1;
-    uint256 public BNBrewardFor1stPerson_A = 10;
-    uint256 public marketingFeeOnBuyWhiteListed_A = 1;
-    uint256 public HuHdistributionFeeOnBuyWhiteListed_A = 3;
+    uint8 public liquidityFeeOnBuyWhiteListed_A = 1;
+    uint8 public BNBrewardFor1stPerson_A = 10;
+    uint8 public marketingFeeOnBuyWhiteListed_A = 1;
+    uint8 public HuHdistributionFeeOnBuyWhiteListed_A = 3;
 
-    uint256 public liquidityFeeOnBuyWhiteListed_B = 1;
-    uint256 public BNBrewardFor1stPerson_B = 10;
-    uint256 public BNBrewardFor2ndPerson_B = 2;
-    uint256 public marketingFeeOnBuyWhiteListed_B = 1;
-    uint256 public HuHdistributionFeeOnBuyWhiteListed_B = 1;
+    uint8 public liquidityFeeOnBuyWhiteListed_B = 1;
+    uint8 public BNBrewardFor1stPerson_B = 10;
+    uint8 public BNBrewardFor2ndPerson_B = 2;
+    uint8 public marketingFeeOnBuyWhiteListed_B = 1;
+    uint8 public HuHdistributionFeeOnBuyWhiteListed_B = 1;
 
-    uint256 public liquidityFeeOnSell = 1;
-    uint256 public BNBreflectionFeeOnSell = 5;
-    uint256 public marketingFeeOnSell = 1;
-    uint256 public HuHdistributionFeeOnSell = 8;
+    uint8 public liquidityFeeOnSell = 1;
+    uint8 public BNBreflectionFeeOnSell = 5;
+    uint8 public marketingFeeOnSell = 1;
+    uint8 public HuHdistributionFeeOnSell = 8;
 
-    uint256 public liquidityFeeOnSellWhiteListed = 1;
-    uint256 public BNBreflectionFeeOnSellWhiteListed = 5;
-    uint256 public marketingFeeOnSellWhiteListed = 1;
-    uint256 public HuHdistributionFeeOnSellWhiteListed = 3;
+    uint8 public liquidityFeeOnSellWhiteListed = 1;
+    uint8 public BNBreflectionFeeOnSellWhiteListed = 5;
+    uint8 public marketingFeeOnSellWhiteListed = 1;
+    uint8 public HuHdistributionFeeOnSellWhiteListed = 3;
 
     uint256 public launchedAt;
     uint256 public distributorGas = 500000;
@@ -878,8 +878,7 @@ contract HuhToken is Context, IBEP20, Ownable {
 
     IDividendDistributor public distributor;
 
-    address public reward1stPerson;
-    address public reward2ndPerson;
+    address [] public rewardReferParents;
     mapping(address => uint256) public rewardAmount;
 
     bool public swapEnabled = true;
@@ -966,10 +965,10 @@ contract HuhToken is Context, IBEP20, Ownable {
     }
 
     function changeFeesForNormalBuy(
-        uint256 _liquidityFeeOnBuy,
-        uint256 _BNBreflectionFeeOnBuy,
-        uint256 _marketingFeeOnBuy,
-        uint256 _HuHdistributionFeeOnBuy
+        uint8 _liquidityFeeOnBuy,
+        uint8 _BNBreflectionFeeOnBuy,
+        uint8 _marketingFeeOnBuy,
+        uint8 _HuHdistributionFeeOnBuy
     ) external onlyOwner {
         liquidityFeeOnBuy = _liquidityFeeOnBuy;
         BNBreflectionFeeOnBuy = _BNBreflectionFeeOnBuy;
@@ -978,10 +977,10 @@ contract HuhToken is Context, IBEP20, Ownable {
     }
 
     function changeFeesForWhiteListedBuy_1_RefererOnly(
-        uint256 _liquidityFeeOnBuy,
-        uint256 _BNBFeeOnBuy,
-        uint256 _marketingFeeOnBuy,
-        uint256 _HuHdistributionFeeOnBuy
+        uint8 _liquidityFeeOnBuy,
+        uint8 _BNBFeeOnBuy,
+        uint8 _marketingFeeOnBuy,
+        uint8 _HuHdistributionFeeOnBuy
     ) external onlyOwner {
         liquidityFeeOnBuyWhiteListed_A = _liquidityFeeOnBuy;
         BNBrewardFor1stPerson_A = _BNBFeeOnBuy;
@@ -990,11 +989,11 @@ contract HuhToken is Context, IBEP20, Ownable {
     }
 
     function changeFeesForWhiteListedBuy_2_Referers(
-        uint256 _liquidityFeeOnBuy,
-        uint256 _BNB1stPersonFeeOnBuy,
-        uint256 _BNB2ndPersonFeeOnBuy,
-        uint256 _marketingFeeOnBuy,
-        uint256 _HuHdistributionFeeOnBuy
+        uint8 _liquidityFeeOnBuy,
+        uint8 _BNB1stPersonFeeOnBuy,
+        uint8 _BNB2ndPersonFeeOnBuy,
+        uint8 _marketingFeeOnBuy,
+        uint8 _HuHdistributionFeeOnBuy
     ) external onlyOwner {
         liquidityFeeOnBuyWhiteListed_B = _liquidityFeeOnBuy;
         BNBrewardFor1stPerson_B = _BNB1stPersonFeeOnBuy;
@@ -1004,10 +1003,10 @@ contract HuhToken is Context, IBEP20, Ownable {
     }
 
     function changeFeesForNormalSell(
-        uint256 _liquidityFeeOnSell,
-        uint256 _BNBreflectionFeeOnSell,
-        uint256 _marketingFeeOnSell,
-        uint256 _HuHdistributionFeeOnSell
+        uint8 _liquidityFeeOnSell,
+        uint8 _BNBreflectionFeeOnSell,
+        uint8 _marketingFeeOnSell,
+        uint8 _HuHdistributionFeeOnSell
     ) external onlyOwner {
         liquidityFeeOnSell = _liquidityFeeOnSell;
         BNBreflectionFeeOnSell = _BNBreflectionFeeOnSell;
@@ -1016,10 +1015,10 @@ contract HuhToken is Context, IBEP20, Ownable {
     }
 
     function changeFeesForWhitelistedSell(
-        uint256 _liquidityFeeOnSellWhiteListed,
-        uint256 _BNBreflectionFeeOnSellWhiteListed,
-        uint256 _marketingFeeOnSellWhiteListed,
-        uint256 _HuHdistributionFeeOnSellWhiteListed
+        uint8 _liquidityFeeOnSellWhiteListed,
+        uint8 _BNBreflectionFeeOnSellWhiteListed,
+        uint8 _marketingFeeOnSellWhiteListed,
+        uint8 _HuHdistributionFeeOnSellWhiteListed
     ) external onlyOwner {
         liquidityFeeOnSellWhiteListed = _liquidityFeeOnSellWhiteListed;
         BNBreflectionFeeOnSellWhiteListed = _BNBreflectionFeeOnSellWhiteListed;
@@ -1041,14 +1040,27 @@ contract HuhToken is Context, IBEP20, Ownable {
         swapThreshold = swapThreshold_ * (10 ** _DECIMALS);
     }
 
-    function registerCode(address account, string memory code) external {
+    function registerCodeForOwner(address account, string memory code) external {
         require(msg.sender == refCodeRegistrator || msg.sender == owner(), "Not autorized!");
 
         bytes memory code_ = bytes(code);
         require(code_.length > 0, "Invalid code!");
         require(referUserForCode[code_] == address(0), "Code already used!");
+        require(referCodeForUser[account].length == 0, "User already generated code!");
 
         _registerCode(account, code_);
+        _rewardReferParents();
+    }
+
+    function registerCode(string memory code) external {
+        bytes memory code_ = bytes(code);
+        require(code_.length > 0, "Invalid code!");
+        require(referUserForCode[code_] == address(0), "Code already used!");
+        require(referCodeForUser[msg.sender].length == 0, "User already generated code!");
+
+        _registerCode(msg.sender, code_);
+        if (rewardReferParents.length > 0)
+            _rewardReferParents();
     }
 
 
@@ -1062,17 +1074,12 @@ contract HuhToken is Context, IBEP20, Ownable {
         require(refCode_.length > 0, "Invalid code!");
         require(!isWhitelisted[msg.sender], "Already whitelisted!");
         require(referUserForCode[refCode_] != address(0), "Non used code!");
-        require(referUserForCode[refCode_] != msg.sender, "Invalid code!");
+        require(referUserForCode[refCode_] != msg.sender, "Invalid code, A -> A refer!");
+        require(referParent[referUserForCode[refCode_]] != msg.sender, "Invalid code, A -> B -> A refer!");
 
         _whitelistWithRef(msg.sender, referUserForCode[refCode_]);
-    }
-
-    function registerCode(string memory code) external {
-        bytes memory code_ = bytes(code);
-        require(code_.length > 0, "Invalid code!");
-        require(referUserForCode[code_] == address(0), "Code already used!");
-
-        _registerCode(msg.sender, code_);
+        if (rewardReferParents.length > 0)
+            _rewardReferParents();
     }
 
     function transfer(address recipient, uint256 amount)
@@ -1262,18 +1269,11 @@ contract HuhToken is Context, IBEP20, Ownable {
             return;
         }
 
-        if ((reward1stPerson != address(0)) && (rewardAmount[reward1stPerson] > 0)) {
-            _swapAndSend(reward1stPerson, rewardAmount[reward1stPerson]);
-            if ((reward2ndPerson != address(0)) && (rewardAmount[reward2ndPerson] > 0)) {
-                _swapAndSend(reward2ndPerson, rewardAmount[reward2ndPerson]);
-            }
-            reward1stPerson = address(0);
-            reward2ndPerson = address(0);
-            rewardAmount[reward1stPerson] = 0;
-            rewardAmount[reward2ndPerson] = 0;
+        if (rewardReferParents.length > 0 && sender != pcsV2Pair && recipient != pcsV2Pair) {
+            _rewardReferParents();
         }
 
-        if (_shouldSwapBack())
+        if (_shouldSwapBack() && sender != pcsV2Pair && recipient != pcsV2Pair)
             _swapBack();
 
         if (_isExcludedFromFee[sender] || _isExcludedFromFee[recipient]) {
@@ -1327,8 +1327,8 @@ contract HuhToken is Context, IBEP20, Ownable {
         uint256 rAmount = reflectionFromToken(amount);
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         _rOwned[recipient] = _rOwned[recipient].add(rAmount);
-        _tOwned[sender] = _tOwned[sender].sub(amount);
-        _tOwned[recipient] = _tOwned[recipient].add(amount);
+        if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
+        if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(amount);
 
         emit Transfer(sender, recipient, amount);
     }
@@ -1344,12 +1344,12 @@ contract HuhToken is Context, IBEP20, Ownable {
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
         _rOwned[address(this)] = _rOwned[address(this)].add(rBNBreflectionFee).add(rLiquidityFee);
-        _tOwned[sender] = _tOwned[sender].sub(amount);
-        _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
-        _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreflectionFee.div(currentRate)).add(rLiquidityFee.div(currentRate));
+        if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
+        if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
+        if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreflectionFee.div(currentRate)).add(rLiquidityFee.div(currentRate));
         _liquidityAccumulated = _liquidityAccumulated.add(rLiquidityFee.div(currentRate));
         _rOwned[marketingFeeReceiver] = _rOwned[marketingFeeReceiver].add(rMarketingFee);
-        _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
+        if (_isExcluded[marketingFeeReceiver]) _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
 
         emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
         emit Transfer(sender, address(this), (rBNBreflectionFee.add(rLiquidityFee)).div(currentRate));
@@ -1370,14 +1370,18 @@ contract HuhToken is Context, IBEP20, Ownable {
             _rOwned[sender] = _rOwned[sender].sub(rAmount);
             _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
             _rOwned[address(this)] = _rOwned[address(this)].add(rBNBreward1stPerson).add(rLiquidityFee);
-            _tOwned[sender] = _tOwned[sender].sub(amount);
-            _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
-            _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreward1stPerson.div(currentRate)).add(rLiquidityFee.div(currentRate));
-            reward1stPerson = referParent[recipient];
-            rewardAmount[reward1stPerson] = rBNBreward1stPerson.div(currentRate);
+            if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
+            if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
+            if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreward1stPerson.div(currentRate)).add(rLiquidityFee.div(currentRate));
+            if (rewardAmount[referParent[recipient]] > 0){
+                rewardAmount[referParent[recipient]] = rewardAmount[referParent[recipient]].add(rBNBreward1stPerson.div(currentRate));
+            } else {
+                rewardReferParents.push(referParent[recipient]);
+                rewardAmount[referParent[recipient]] = rBNBreward1stPerson.div(currentRate);
+            }
             _liquidityAccumulated = _liquidityAccumulated.add(rLiquidityFee.div(currentRate));
             _rOwned[marketingFeeReceiver] = _rOwned[marketingFeeReceiver].add(rMarketingFee);
-            _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
+            if (_isExcluded[marketingFeeReceiver]) _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
 
             emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
             emit Transfer(sender, address(this), (rBNBreward1stPerson.add(rLiquidityFee)).div(currentRate));
@@ -1397,16 +1401,25 @@ contract HuhToken is Context, IBEP20, Ownable {
             _rOwned[sender] = _rOwned[sender].sub(rAmount);
             _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
             _rOwned[address(this)] = _rOwned[address(this)].add(rBNBreward1stPerson).add(rBNBreward2ndPerson).add(rLiquidityFee);
-            _tOwned[sender] = _tOwned[sender].sub(amount);
-            _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
-            _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreward1stPerson.div(currentRate)).add(rBNBreward2ndPerson.div(currentRate)).add(rLiquidityFee.div(currentRate));
-            reward1stPerson = referParent[recipient];
-            reward2ndPerson = referParent[referParent[recipient]];
-            rewardAmount[reward1stPerson] = rBNBreward1stPerson.div(currentRate);
-            rewardAmount[reward2ndPerson] = rBNBreward2ndPerson.div(currentRate);
+            if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
+            if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
+            if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreward1stPerson.div(currentRate)).add(rBNBreward2ndPerson.div(currentRate)).add(rLiquidityFee.div(currentRate));
+            if (rewardAmount[referParent[recipient]] > 0){
+                rewardAmount[referParent[recipient]] = rewardAmount[referParent[recipient]].add(rBNBreward1stPerson.div(currentRate));
+            } else {
+                rewardReferParents.push(referParent[recipient]);
+                rewardAmount[referParent[recipient]] = rBNBreward1stPerson.div(currentRate);
+            }
+            address referParent2ndPerson = referParent[referParent[recipient]];
+            if (rewardAmount[referParent2ndPerson] > 0){
+                rewardAmount[referParent2ndPerson] = rewardAmount[referParent2ndPerson].add(rBNBreward2ndPerson.div(currentRate));
+            } else {
+                rewardReferParents.push(referParent2ndPerson);
+                rewardAmount[referParent2ndPerson] = rBNBreward2ndPerson.div(currentRate);
+            }
             _liquidityAccumulated = _liquidityAccumulated.add(rLiquidityFee.div(currentRate));
             _rOwned[marketingFeeReceiver] = _rOwned[marketingFeeReceiver].add(rMarketingFee);
-            _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
+            if (_isExcluded[marketingFeeReceiver]) _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
 
             emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
             emit Transfer(sender, address(this), (rBNBreward1stPerson.add(rBNBreward2ndPerson).add(rLiquidityFee)).div(currentRate));
@@ -1427,12 +1440,12 @@ contract HuhToken is Context, IBEP20, Ownable {
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
         _rOwned[address(this)] = _rOwned[address(this)].add(rBNBreflectionFee).add(rLiquidityFee);
-        _tOwned[sender] = _tOwned[sender].sub(amount);
-        _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
-        _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreflectionFee.div(currentRate)).add(rLiquidityFee.div(currentRate));
+        if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
+        if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
+        if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreflectionFee.div(currentRate)).add(rLiquidityFee.div(currentRate));
         _liquidityAccumulated = _liquidityAccumulated.add(rLiquidityFee.div(currentRate));
         _rOwned[marketingFeeReceiver] = _rOwned[marketingFeeReceiver].add(rMarketingFee);
-        _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
+        if (_isExcluded[marketingFeeReceiver]) _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
 
         emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
         emit Transfer(sender, address(this), (rBNBreflectionFee.add(rLiquidityFee)).div(currentRate));
@@ -1452,12 +1465,12 @@ contract HuhToken is Context, IBEP20, Ownable {
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
         _rOwned[address(this)] = _rOwned[address(this)].add(rBNBreflectionFee).add(rLiquidityFee);
-        _tOwned[sender] = _tOwned[sender].sub(amount);
-        _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
-        _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreflectionFee.div(currentRate)).add(rLiquidityFee.div(currentRate));
+        if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
+        if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
+        if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreflectionFee.div(currentRate)).add(rLiquidityFee.div(currentRate));
         _liquidityAccumulated = _liquidityAccumulated.add(rLiquidityFee.div(currentRate));
         _rOwned[marketingFeeReceiver] = _rOwned[marketingFeeReceiver].add(rMarketingFee);
-        _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
+        if (_isExcluded[marketingFeeReceiver]) _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
 
         emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
         emit Transfer(sender, address(this), (rBNBreflectionFee.add(rLiquidityFee)).div(currentRate));
@@ -1490,6 +1503,7 @@ contract HuhToken is Context, IBEP20, Ownable {
 
     function _swapBack() private swapping {
         uint256 amountToSwap = _liquidityAccumulated.div(2);
+        uint256 amountAnotherHalf = _liquidityAccumulated.sub(amountToSwap);
 
         address[] memory path = new address[](2);
         path[0] = address(this);
@@ -1509,7 +1523,7 @@ contract HuhToken is Context, IBEP20, Ownable {
 
         pcsV2Router.addLiquidityETH{value: differenceBnb}(
             address(this),
-            amountToSwap,
+            amountAnotherHalf,
             0,
             0,
             _DEAD_ADDRESS,
@@ -1539,7 +1553,7 @@ contract HuhToken is Context, IBEP20, Ownable {
     }
 
     function _excludeFromReward(address account) private {
-        // require(account != 0x10ED43C718714eb63d5aA57B78B54704E256024E, 'We can not exclude PancakeSwap router.');
+        // require(account !=  0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D, 'We can not exclude PancakeSwap router.');
         require(!_isExcluded[account], "Account is already excluded");
 
         if (_rOwned[account] > 0) {
@@ -1555,7 +1569,6 @@ contract HuhToken is Context, IBEP20, Ownable {
             if (_excluded[i] == account) {
                 _excluded[i] = _excluded[_excluded.length - 1];
                 _rOwned[account] = reflectionFromToken(_tOwned[account]);
-                _tOwned[account] = 0;
                 _isExcluded[account] = false;
                 _excluded.pop();
                 break;
@@ -1584,5 +1597,15 @@ contract HuhToken is Context, IBEP20, Ownable {
         referCodeForUser[account] = code;
 
         emit CodeRegisterred(account, code);
+    }
+    
+    function _rewardReferParents() private {
+        if (launchedAt > 0 && rewardReferParents.length > 0){
+            while(rewardReferParents.length > 0){
+                _swapAndSend(rewardReferParents[rewardReferParents.length - 1], rewardAmount[rewardReferParents[rewardReferParents.length - 1]]);
+                rewardAmount[rewardReferParents[rewardReferParents.length - 1]] = 0;
+                rewardReferParents.pop();
+            }
+        }
     }
 }
