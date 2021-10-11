@@ -29,7 +29,6 @@ abstract contract Context {
 
 // File @openzeppelin/contracts/access/Ownable.sol@v4.3.1
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
@@ -102,7 +101,7 @@ abstract contract Ownable is Context {
 
 // File @openzeppelin/contracts/utils/math/SafeMath.sol@v4.3.1
 
-// SPDX-License-Identifier: MIT
+
 
 pragma solidity ^0.8.0;
 
@@ -332,7 +331,7 @@ library SafeMath {
 
 // File contracts/interfaces/IBEP20.sol
 
-// SPDX-License-Identifier: MIT
+
 
 pragma solidity ^0.8.0;
 
@@ -423,7 +422,6 @@ interface IBEP20 {
 
 // File contracts/interfaces/IDividendDistributor.sol
 
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
@@ -436,7 +434,7 @@ interface IDividendDistributor {
 
 // File contracts/dividends/DividendDistributor.sol
 
-// SPDX-License-Identifier: MIT
+
 
 pragma solidity ^0.8.0;
 
@@ -574,7 +572,7 @@ contract DividendDistributor is IDividendDistributor {
 
 // File contracts/interfaces/IUniswap.sol
 
-// SPDX-License-Identifier: MIT
+
 
 pragma solidity ^0.8.0;
 
@@ -784,7 +782,7 @@ interface IUniswapV2Factory {
 
 // File contracts/HuhToken.sol
 
-// SPDX-License-Identifier: MIT
+
 
 pragma solidity ^0.8.0;
 
