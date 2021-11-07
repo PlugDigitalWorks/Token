@@ -1,10 +1,7 @@
-// Sources flattened with hardhat v2.6.2 https://hardhat.org
-
-// File @openzeppelin/contracts/utils/Context.sol@v4.3.1
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 /**
  * @dev Provides information about the current execution context, including the
@@ -25,12 +22,6 @@ abstract contract Context {
         return msg.data;
     }
 }
-
-
-// File @openzeppelin/contracts/access/Ownable.sol@v4.3.1
-
-
-pragma solidity ^0.8.0;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -97,13 +88,6 @@ abstract contract Ownable is Context {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
-
-
-// File @openzeppelin/contracts/utils/math/SafeMath.sol@v4.3.1
-
-
-
-pragma solidity ^0.8.0;
 
 // CAUTION
 // This version of SafeMath should only be used with Solidity 0.8 or later,
@@ -328,13 +312,6 @@ library SafeMath {
     }
 }
 
-
-// File contracts/interfaces/IBEP20.sol
-
-
-
-pragma solidity ^0.8.0;
-
 /**
  * @dev Interface of the BEP20 standard as defined in the EIP.
  */
@@ -419,163 +396,9 @@ interface IBEP20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-
-// File contracts/interfaces/IDividendDistributor.sol
-
-
-pragma solidity ^0.8.0;
-
-interface IDividendDistributor {
-    function deposit() external payable;
-    function process() external;
-    function setShare(address shareholder, uint256 amount) external;
+interface IRewardDistributor {
+    function addRewardHolderShare(address rewardRecipient, uint256 amount) external;
 }
-
-
-// File contracts/dividends/DividendDistributor.sol
-
-
-
-pragma solidity ^0.8.0;
-
-
-contract DividendDistributor is IDividendDistributor {
-    using SafeMath for uint256;
-
-    address _token;
-
-    struct Share {
-        uint256 amount;
-        uint256 totalExcluded;
-        uint256 totalRealised;
-    }
-
-    address[] shareholders;
-    mapping(address => uint256) shareholderIndexes;
-    mapping(address => uint256) shareholderClaims;
-
-    mapping(address => Share) public shares;
-
-    uint256 public totalShares;
-    uint256 public totalDividends;
-    uint256 public totalDistributed;
-    uint256 public dividendsPerShare;
-    uint256 public constant DIVIDENDS_PER_SHARE_ACCURACY_FACTOR = 10 ** 36;
-
-    uint256 currentIndex;
-
-    modifier onlyToken() {
-        require(msg.sender == _token); _;
-    }
-
-    constructor () {
-        _token = msg.sender;
-    }
-
-    function getCurrentIndex() external onlyToken view returns (uint256) {
-        return currentIndex;
-    }
-
-    function setShare(address shareholder, uint256 amount) public override onlyToken {
-        if (shares[shareholder].amount > 0) {
-            distributeDividend(shareholder);
-        }
-
-        if (amount > 0 && shares[shareholder].amount == 0) {
-            addShareholder(shareholder);
-        } else if (amount == 0 && shares[shareholder].amount > 0) {
-            removeShareholder(shareholder);
-        }
-
-        totalShares = totalShares.sub(shares[shareholder].amount).add(amount);
-        shares[shareholder].amount = amount;
-        shares[shareholder].totalExcluded = getCumulativeDividends(shares[shareholder].amount);
-    }
-
-    function deposit() public payable override onlyToken {
-        uint256 amount = msg.value;
-        totalDividends = totalDividends.add(amount);
-        dividendsPerShare = dividendsPerShare.add(DIVIDENDS_PER_SHARE_ACCURACY_FACTOR.mul(amount).div(totalShares));
-    }
-
-    function process() public override onlyToken {
-        uint256 shareholderCount = shareholders.length;
-
-        if (shareholderCount == 0)
-            return;
-
-        uint256 iterations = 0;
-
-        while (gasleft() > 100000 && iterations < shareholderCount) {
-            if (currentIndex >= shareholderCount) {
-                currentIndex = 0;
-            }
-
-            if (getUnpaidEarnings(shareholders[currentIndex]) > 0) {
-                distributeDividend(shareholders[currentIndex]);
-            }
-
-            currentIndex++;
-            iterations++;
-        }
-    }
-
-    function distributeDividend(address shareholder) private {
-        if (shares[shareholder].amount == 0)
-            return;
-
-        uint256 amount = getUnpaidEarnings(shareholder);
-        if (amount > 0) {
-            totalDistributed = totalDistributed.add(amount);
-            (bool success,) = payable(shareholder).call{value: amount, gas: 30000}("");
-            require(success, "distributeDividend: Could not transfer funds!");
-
-            shareholderClaims[shareholder] = block.timestamp;
-            shares[shareholder].totalRealised = shares[shareholder].totalRealised.add(amount);
-            shares[shareholder].totalExcluded = getCumulativeDividends(shares[shareholder].amount);
-        }
-    }
-
-    function claimDividend() public {
-        distributeDividend(msg.sender);
-    }
-
-    function getUnpaidEarnings(address shareholder) public view returns (uint256) {
-        if (shares[shareholder].amount == 0)
-            return 0;
-
-        uint256 shareholderTotalDividends = getCumulativeDividends(shares[shareholder].amount);
-        uint256 shareholderTotalExcluded = shares[shareholder].totalExcluded;
-
-        if (shareholderTotalDividends <= shareholderTotalExcluded)
-            return 0;
-
-        return shareholderTotalDividends.sub(shareholderTotalExcluded);
-    }
-
-    function getCumulativeDividends(uint256 share) private view returns (uint256) {
-        return share.mul(dividendsPerShare).div(DIVIDENDS_PER_SHARE_ACCURACY_FACTOR);
-    }
-
-    function addShareholder(address shareholder) private {
-        shareholderIndexes[shareholder] = shareholders.length;
-        shareholders.push(shareholder);
-    }
-
-    function removeShareholder(address shareholder) private {
-        shareholders[shareholderIndexes[shareholder]] = shareholders[shareholders.length-1];
-        shareholderIndexes[shareholders[shareholders.length-1]] = shareholderIndexes[shareholder];
-        shareholders.pop();
-    }
-}
-
-
-// File contracts/interfaces/IUniswap.sol
-
-
-
-pragma solidity ^0.8.0;
-
 
 interface IUniswapV2Pair {
     event Approval(address indexed owner, address indexed spender, uint value);
@@ -780,24 +603,12 @@ interface IUniswapV2Factory {
 }
 
 
-// File contracts/HuhToken.sol
-
-
-
-pragma solidity ^0.8.0;
-
-
 //      ██╗  ██╗██╗   ██╗██╗  ██╗    ████████╗ ██████╗ ██╗  ██╗███████╗███╗   ██╗
 //      ██║  ██║██║   ██║██║  ██║    ╚══██╔══╝██╔═══██╗██║ ██╔╝██╔════╝████╗  ██║
 //      ███████║██║   ██║███████║       ██║   ██║   ██║█████╔╝ █████╗  ██╔██╗ ██║
 //      ██╔══██║██║   ██║██╔══██║       ██║   ██║   ██║██╔═██╗ ██╔══╝  ██║╚██╗██║
 //      ██║  ██║╚██████╔╝██║  ██║       ██║   ╚██████╔╝██║  ██╗███████╗██║ ╚████║
 //      ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝       ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝
-
-
-
-
-
 
 contract HuhToken is Context, IBEP20, Ownable {
     using SafeMath for uint256;
@@ -812,48 +623,43 @@ contract HuhToken is Context, IBEP20, Ownable {
     uint256 private _tFeeTotal;
 
 
-    //  +---------------------------+------+-----+------+------------+--------------+---------+
-    //  |                           | BNB% | LP% | HUH% | Marketing% | Layer 2 BNB% | Total % |
-    //  +---------------------------+------+-----+------+------------+--------------+---------+
-    //  | Normal Buy                | 5    | 1   | 8    | 1          |              | 15      |
-    //  | Whitelisted Buy (layer 1) | 10   | 1   | 3    | 1          |              | 15      |
-    //  | Whitelisted Buy (layer 2) | 10   | 1   | 1    | 1          | 2            | 15      |
-    //  | Normal Sell               | 5    | 1   | 8    | 1          |              | 15      |
-    //  | Whitelisted Sell          | 5    | 1   | 3    | 1          |              | 10      |
-    //  +---------------------------+------+-----+------+------------+--------------+---------+
+    //  +---------------------------+-----+------+------------+---------+
+    //  |                           | LP% | HUH% | Marketing% | Total % |
+    //  +---------------------------+-----+------+------------+---------+
+    //  | Normal Buy                | 1   | 8    |    1       |   10    |
+    //  | Whitelisted Buy (layer 1) | 1   | 8    |    1       |   10    |
+    //  | Normal Sell               | 1   | 8    |    1       |   10    |
+    //  | Whitelisted Sell          | 1   | 8    |    1       |   10    |
+    //  +---------------------------+-----+------+------------+---------+
+
+    uint8 public referralReward = 10;
 
     uint8 public liquidityFeeOnBuy = 1;
-    uint8 public BNBreflectionFeeOnBuy = 5;
     uint8 public marketingFeeOnBuy = 1;
     uint8 public HuHdistributionFeeOnBuy = 8;
 
-    uint8 public liquidityFeeOnBuyWhiteListed_A = 1;
-    uint8 public BNBrewardFor1stPerson_A = 10;
-    uint8 public marketingFeeOnBuyWhiteListed_A = 1;
-    uint8 public HuHdistributionFeeOnBuyWhiteListed_A = 3;
-
-    uint8 public liquidityFeeOnBuyWhiteListed_B = 1;
-    uint8 public BNBrewardFor1stPerson_B = 10;
-    uint8 public BNBrewardFor2ndPerson_B = 2;
-    uint8 public marketingFeeOnBuyWhiteListed_B = 1;
-    uint8 public HuHdistributionFeeOnBuyWhiteListed_B = 1;
+    uint8 public liquidityFeeOnWhiteListedBuy = 1;
+    uint8 public marketingFeeOnBuyWhiteListed = 1;
+    uint8 public HuHdistributionFeeOnBuyWhiteListed = 8;
 
     uint8 public liquidityFeeOnSell = 1;
-    uint8 public BNBreflectionFeeOnSell = 5;
     uint8 public marketingFeeOnSell = 1;
     uint8 public HuHdistributionFeeOnSell = 8;
 
-    uint8 public liquidityFeeOnSellWhiteListed = 1;
-    uint8 public BNBreflectionFeeOnSellWhiteListed = 5;
-    uint8 public marketingFeeOnSellWhiteListed = 1;
-    uint8 public HuHdistributionFeeOnSellWhiteListed = 3;
+    uint8 public liquidityFeeOnWhiteListedSell = 1;
+    uint8 public marketingFeeOnWhiteListedSell = 1;
+    uint8 public HuHdistributionFeeOnWhiteListedSell = 8;
 
     uint256 public launchedAt;
-    uint256 public distributorGas = 500000;
-    uint256 public minTokenAmountForGetReward = 10000 * (10 ** _DECIMALS);
 
-    address public refCodeRegistrator;  // Address who allowed to register code for users (will be used later)
-    address public marketingFeeReceiver;
+    // State data for statistical purposes ONLY
+    uint256 private referralCount;
+    uint256 private totalReferralReward;
+    mapping(address => uint256) private userReferralCount;
+    mapping(address => uint256) private userReferralReward;
+
+    address public referralCodeRegistrator;  // Address who allowed to register code for users (will be used later)
+    address public marketingWallet;
     address private constant _DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     mapping(address => uint256) private _rOwned;
@@ -861,28 +667,26 @@ contract HuhToken is Context, IBEP20, Ownable {
     mapping(address => mapping(address => uint256)) private _allowances;
 
     mapping(address => bool) private _isExcludedFromFee;
-    mapping(address => bool) private _isExcludedFromDividend;
     mapping(address => bool) private _isExcluded;
     address[] private _excluded;
 
     mapping(address => bytes) public referCodeForUser;
     mapping(bytes => address) public referUserForCode;
     mapping(address => address) public referParent;
+    mapping(address => address[]) public referralList;
     mapping(address => bool) public isWhitelisted;
     mapping(address => bool) public isFirstBuy;
 
     IUniswapV2Router02 public pcsV2Router;
     address public pcsV2Pair;
 
-    IDividendDistributor public distributor;
-
-    address [] public rewardReferParents;
-    mapping(address => uint256) public rewardAmount;
+    IRewardDistributor public rewardDistributor;
 
     bool public swapEnabled = true;
-    uint256 public swapThreshold = 200000 * (10 ** _DECIMALS); // Swap every 200k tokens
-    uint256 private _liquidityAccumulated;
+    uint256 public maxTxAmount = _tTotal.mul(1).div(10**2); // 1% of total supply
+    uint256 public amountOfTokensToAddToLiquidityThreshold = maxTxAmount.mul(10).div(10**2); // 10% of max transaction amount
 
+    bool public swapAndLiquifyEnabled = true;
     bool private _inSwap;
     modifier swapping() {
         _inSwap = true;
@@ -891,39 +695,45 @@ contract HuhToken is Context, IBEP20, Ownable {
     }
 
     event UserWhitelisted(address account, address referee);
-    event CodeRegisterred(address account, bytes code);
-    event SwapAndLiquify(
-        uint256 ethReceived,
-        uint256 tokensIntoLiqudity
-    );
-
-
-    //  -----------------------------
-    //  CONSTRUCTOR
-    //  -----------------------------
-
+    event RegisterCode(address account, bytes code);
+    event SwapAndLiquify(uint256 ethReceived, uint256 tokensIntoLiqudity);
+    event UpdatePancakeSwapRouter(address pcsV2Router);
+    event UpdateRewardDistributor(address newRewardDistributor);
+    event UpdateSwapAndLiquifyEnabled(bool swapAndLiquifyEnabled);
+    event SetSwapEnabled(bool swapEnabled);
+    event ExcludeFromReflection(address account);
+    event IncludeInReflection(address account);
+    event SetIsExcludedFromFee(address account, bool flag);
+    event ChangeFeesForNormalBuy(uint8 liquidityFeeOnBuy, uint8 marketingFeeOnBuy, uint8 HuHdistributionFeeOnBuy);
+    event ChangeFeesForWhiteListedBuy(uint8 liquidityFeeOnBuy, uint8 marketingFeeOnBuy, uint8 HuHdistributionFeeOnBuy);
+    event ChangeFeesForNormalSell(uint8 liquidityFeeOnSell, uint8 marketingFeeOnSell, uint8 HuHdistributionFeeOnSell);
+    event ChangeFeesForWhitelistedSell(uint8 liquidityFeeOnSell, uint8 marketingFeeOnSell, uint8 HuHdistributionFeeOnSell);
+    event ChangeReferralReward(uint8 referralReward);
+    event UpdateMarketingWallet(address marketingWallet);
+    event SetReferralCodeRegistrator(address referralCodeRegistrator);
+    event UpdateAmountOfTokensToAddToLiquidityThreshold(uint256 amountOfTokensToAddToLiquidityThreshold);
+    event SetMaxTxPercent(uint256 maxTxPercent);
 
     constructor() {
-        IUniswapV2Router02 _pancakeswapV2Router =
-            IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+        IUniswapV2Router02 _pancakeswapV2Router = IUniswapV2Router02(0xDE2Db97D54a3c3B008a097B2260633E6cA7DB1AF);
 
-        // Create a uniswap pair for this new token
-        pcsV2Pair = IUniswapV2Factory(_pancakeswapV2Router.factory()).createPair(
-            address(this),
-            _pancakeswapV2Router.WETH()
-        );
+        pcsV2Pair = IUniswapV2Factory(_pancakeswapV2Router.factory()).createPair(address(this), _pancakeswapV2Router.WETH());
         pcsV2Router = _pancakeswapV2Router;
         _allowances[address(this)][address(pcsV2Router)] = _MAX;
-        distributor = IDividendDistributor(new DividendDistributor());
+
+        rewardDistributor = IRewardDistributor(0x2d7b5e083f993cE678D4459788106Ec544368792);
+        _allowances[address(this)][address(rewardDistributor)] = _MAX;
+        _allowances[address(rewardDistributor)][address(pcsV2Router)] = _MAX;
+
+        marketingWallet = 0x08e9127Ffe9380591fc633793493A5b41fc8e283;
 
         _rOwned[msg.sender] = _rTotal;
         _isExcludedFromFee[msg.sender] = true;
         _isExcludedFromFee[address(this)] = true;
-        _isExcludedFromDividend[address(this)] = true;
-        _isExcludedFromDividend[pcsV2Pair] = true;
-        _isExcludedFromDividend[address(0)] = true;
-
-        marketingFeeReceiver = msg.sender;
+        _isExcludedFromFee[address(rewardDistributor)] = true;
+        _isExcludedFromFee[marketingWallet] = true;
+        _excludeFromReflection(address(rewardDistributor));
+        _excludeFromReflection(marketingWallet);
 
         emit Transfer(address(0), msg.sender, _tTotal);
     }
@@ -932,114 +742,135 @@ contract HuhToken is Context, IBEP20, Ownable {
 
     fallback() external payable {}
 
+    // Back-Up withdraw, in case BNB gets sent in here
+    // NOTE: This function is to be called if and only if BNB gets sent into this contract. 
+    // On no other occurence should this function be called. 
+    function withdrawEthInWei(address payable recipient, uint256 amount) external onlyOwner {
+        require(recipient != address(0), 'Invalid Recipient!');
+        require(amount > 0, 'Invalid Amount!');
+        recipient.transfer(amount);
+    }
+
+    // Withdraw BEP20 tokens sent to this contract
+    // NOTE: This function is to be called if and only if BEP20 tokens gets sent into this contract. 
+    // On no other occurence should this function be called. 
+    function withdrawTokens(address token, address recipient) external onlyOwner {
+        require(token != address(0), 'Invalid Token!');
+        require(recipient != address(0), 'Invalid Recipient!');
+
+        uint256 balance = IBEP20(token).balanceOf(address(this));
+        if (balance > 0) {
+            IBEP20(token).transfer(recipient, balance);
+        }
+    }
 
     //  -----------------------------
     //  SETTERS (PROTECTED)
     //  -----------------------------
-
-
-    function excludeFromReward(address account) public onlyOwner {
-        _excludeFromReward(account);
+    function excludeFromReflection(address account) public onlyOwner {
+        _excludeFromReflection(account);
+        emit ExcludeFromReflection(account);
     }
 
-    function includeInReward(address account) external onlyOwner {
-        _includeInReward(account);
+    function includeInReflection(address account) external onlyOwner {
+        _includeInReflection(account);
+        emit IncludeInReflection(account);
     }
 
     function setIsExcludedFromFee(address account, bool flag) external onlyOwner {
         _setIsExcludedFromFee(account, flag);
+        emit SetIsExcludedFromFee(account, flag);
     }
 
-    function setIsExcludedFromDividend (address account, bool flag) external onlyOwner {
-        _setIsExcludedFromDividend(account, flag);
-    }
-
-    function setDistributorSettings(uint256 gas) external onlyOwner {
-        distributorGas = gas;
-    }
-
-    function changeMinAmountForReward(uint256 amount) external onlyOwner {
-        minTokenAmountForGetReward = amount * (10 ** _DECIMALS);
-    }
-
-    function changeFeesForNormalBuy(
-        uint8 _liquidityFeeOnBuy,
-        uint8 _BNBreflectionFeeOnBuy,
-        uint8 _marketingFeeOnBuy,
-        uint8 _HuHdistributionFeeOnBuy
-    ) external onlyOwner {
+    function changeFeesForNormalBuy(uint8 _liquidityFeeOnBuy, uint8 _marketingFeeOnBuy, uint8 _HuHdistributionFeeOnBuy) external onlyOwner {
         liquidityFeeOnBuy = _liquidityFeeOnBuy;
-        BNBreflectionFeeOnBuy = _BNBreflectionFeeOnBuy;
         marketingFeeOnBuy = _marketingFeeOnBuy;
         HuHdistributionFeeOnBuy = _HuHdistributionFeeOnBuy;
+        emit ChangeFeesForNormalBuy(_liquidityFeeOnBuy, _marketingFeeOnBuy, _HuHdistributionFeeOnBuy);
     }
 
-    function changeFeesForWhiteListedBuy_1_RefererOnly(
-        uint8 _liquidityFeeOnBuy,
-        uint8 _BNBFeeOnBuy,
-        uint8 _marketingFeeOnBuy,
-        uint8 _HuHdistributionFeeOnBuy
-    ) external onlyOwner {
-        liquidityFeeOnBuyWhiteListed_A = _liquidityFeeOnBuy;
-        BNBrewardFor1stPerson_A = _BNBFeeOnBuy;
-        marketingFeeOnBuyWhiteListed_A = _marketingFeeOnBuy;
-        HuHdistributionFeeOnBuyWhiteListed_A = _HuHdistributionFeeOnBuy;
+    function changeFeesForWhiteListedBuy(uint8 _liquidityFeeOnBuy, uint8 _marketingFeeOnBuy, uint8 _HuHdistributionFeeOnBuy) external onlyOwner {
+        liquidityFeeOnWhiteListedBuy = _liquidityFeeOnBuy;
+        marketingFeeOnBuyWhiteListed = _marketingFeeOnBuy;
+        HuHdistributionFeeOnBuyWhiteListed = _HuHdistributionFeeOnBuy;
+        emit ChangeFeesForWhiteListedBuy(_liquidityFeeOnBuy, _marketingFeeOnBuy, _HuHdistributionFeeOnBuy);
     }
 
-    function changeFeesForWhiteListedBuy_2_Referers(
-        uint8 _liquidityFeeOnBuy,
-        uint8 _BNB1stPersonFeeOnBuy,
-        uint8 _BNB2ndPersonFeeOnBuy,
-        uint8 _marketingFeeOnBuy,
-        uint8 _HuHdistributionFeeOnBuy
-    ) external onlyOwner {
-        liquidityFeeOnBuyWhiteListed_B = _liquidityFeeOnBuy;
-        BNBrewardFor1stPerson_B = _BNB1stPersonFeeOnBuy;
-        BNBrewardFor2ndPerson_B = _BNB2ndPersonFeeOnBuy;
-        marketingFeeOnBuyWhiteListed_B = _marketingFeeOnBuy;
-        HuHdistributionFeeOnBuyWhiteListed_B = _HuHdistributionFeeOnBuy;
-    }
-
-    function changeFeesForNormalSell(
-        uint8 _liquidityFeeOnSell,
-        uint8 _BNBreflectionFeeOnSell,
-        uint8 _marketingFeeOnSell,
-        uint8 _HuHdistributionFeeOnSell
-    ) external onlyOwner {
+    function changeFeesForNormalSell(uint8 _liquidityFeeOnSell, uint8 _marketingFeeOnSell, uint8 _HuHdistributionFeeOnSell) external onlyOwner {
         liquidityFeeOnSell = _liquidityFeeOnSell;
-        BNBreflectionFeeOnSell = _BNBreflectionFeeOnSell;
         marketingFeeOnSell = _marketingFeeOnSell;
         HuHdistributionFeeOnSell = _HuHdistributionFeeOnSell;
+        emit ChangeFeesForNormalSell(_liquidityFeeOnSell, _marketingFeeOnSell, _HuHdistributionFeeOnSell);
     }
 
-    function changeFeesForWhitelistedSell(
-        uint8 _liquidityFeeOnSellWhiteListed,
-        uint8 _BNBreflectionFeeOnSellWhiteListed,
-        uint8 _marketingFeeOnSellWhiteListed,
-        uint8 _HuHdistributionFeeOnSellWhiteListed
-    ) external onlyOwner {
-        liquidityFeeOnSellWhiteListed = _liquidityFeeOnSellWhiteListed;
-        BNBreflectionFeeOnSellWhiteListed = _BNBreflectionFeeOnSellWhiteListed;
-        marketingFeeOnSellWhiteListed = _marketingFeeOnSellWhiteListed;
-        HuHdistributionFeeOnSellWhiteListed = _HuHdistributionFeeOnSellWhiteListed;
+    function changeFeesForWhitelistedSell(uint8 _liquidityFeeOnSell, uint8 _marketingFeeOnSell, uint8 _HuHdistributionFeeOnSell) external onlyOwner {
+        liquidityFeeOnWhiteListedSell = _liquidityFeeOnSell;
+        marketingFeeOnWhiteListedSell = _marketingFeeOnSell;
+        HuHdistributionFeeOnWhiteListedSell = _HuHdistributionFeeOnSell;
+        emit ChangeFeesForWhitelistedSell(_liquidityFeeOnSell, _marketingFeeOnSell, _HuHdistributionFeeOnSell);
     }
 
-    function changeMarketingWallet(address marketingFeeReceiver_) external onlyOwner {
-        require(marketingFeeReceiver_ != address(0), "Zero address not allowed!");
-        marketingFeeReceiver = marketingFeeReceiver_;
+    function changeReferralReward(uint8 _referralReward) external onlyOwner {
+        referralReward = _referralReward;
+        emit ChangeReferralReward(_referralReward);
     }
 
-    function setRefCodeRegistrator(address refCodeRegistrator_) external onlyOwner {
-        require(refCodeRegistrator_ != address(0), "setRefCodeRegistrator: Zero address not allowed!");
-        refCodeRegistrator = refCodeRegistrator_;
+    function updateMarketingWallet(address _marketingWallet) external onlyOwner {
+        require(_marketingWallet != address(0), "Zero address not allowed!");
+        marketingWallet = _marketingWallet;
+        emit UpdateMarketingWallet(_marketingWallet);
     }
 
-    function changeSwapThreshold(uint256 swapThreshold_) external onlyOwner {
-        swapThreshold = swapThreshold_ * (10 ** _DECIMALS);
+    function setReferralCodeRegistrator(address _referralCodeRegistrator) external onlyOwner {
+        require(_referralCodeRegistrator != address(0), "setReferralCodeRegistrator: Zero address not allowed!");
+        referralCodeRegistrator = _referralCodeRegistrator;
+        emit SetReferralCodeRegistrator(_referralCodeRegistrator);
+    }
+
+    function updateAmountOfTokensToAddToLiquidityThreshold(uint256 _amountOfTokensToAddToLiquidityThreshold) external onlyOwner {
+        amountOfTokensToAddToLiquidityThreshold = _amountOfTokensToAddToLiquidityThreshold * (10 ** _DECIMALS);
+        emit UpdateAmountOfTokensToAddToLiquidityThreshold(_amountOfTokensToAddToLiquidityThreshold);
+    }
+
+    function updatePancakeSwapRouter(address _pcsV2Router) external onlyOwner {
+        require(_pcsV2Router != address(0), 'PancakeSwap Router Invalid!');
+        require(address(pcsV2Router) != _pcsV2Router, 'PancakeSwap Router already exists!');
+        pcsV2Router = IUniswapV2Router02(_pcsV2Router);
+        pcsV2Pair = IUniswapV2Factory(pcsV2Router.factory()).createPair(address(this), pcsV2Router.WETH());
+        _allowances[address(this)][address(pcsV2Router)] = _MAX;
+        _allowances[address(rewardDistributor)][address(pcsV2Router)] = _MAX;
+        emit UpdatePancakeSwapRouter(_pcsV2Router);
+    }
+
+    function updateRewardDistributor(address _rewardDistributor) external onlyOwner {
+        require(address(rewardDistributor) != _rewardDistributor, 'Reward Distributor already exists!');
+        rewardDistributor = IRewardDistributor(_rewardDistributor);
+        _allowances[address(this)][address(rewardDistributor)] = _MAX;
+        _allowances[address(rewardDistributor)][address(pcsV2Router)] = _MAX;
+        _isExcludedFromFee[address(rewardDistributor)] = true;
+        _excludeFromReflection(address(rewardDistributor));
+        emit UpdateRewardDistributor(_rewardDistributor);
+    }
+
+    function updateSwapAndLiquifyEnabled(bool _swapAndLiquifyEnabled) external onlyOwner {
+        require(swapAndLiquifyEnabled != _swapAndLiquifyEnabled, 'Value already exists!');
+        swapAndLiquifyEnabled = _swapAndLiquifyEnabled;
+        emit UpdateSwapAndLiquifyEnabled(_swapAndLiquifyEnabled);
+    }
+
+    function setSwapEnabled(bool _swapEnabled) external onlyOwner {
+        require(swapEnabled != _swapEnabled, 'Value already exists!');
+        swapEnabled = _swapEnabled;
+        emit SetSwapEnabled(_swapEnabled);
+    }
+
+    function setMaxTxPercent(uint256 maxTxPercent) external onlyOwner {
+        maxTxAmount = _tTotal.mul(maxTxPercent).div(10**2);
+        emit SetMaxTxPercent(maxTxPercent);
     }
 
     function registerCodeForOwner(address account, string memory code) external {
-        require(msg.sender == refCodeRegistrator || msg.sender == owner(), "Not autorized!");
+        require(msg.sender == referralCodeRegistrator || msg.sender == owner(), "Not autorized!");
 
         bytes memory code_ = bytes(code);
         require(code_.length > 0, "Invalid code!");
@@ -1047,7 +878,6 @@ contract HuhToken is Context, IBEP20, Ownable {
         require(referCodeForUser[account].length == 0, "User already generated code!");
 
         _registerCode(account, code_);
-        _rewardReferParents();
     }
 
     function registerCode(string memory code) external {
@@ -1057,16 +887,11 @@ contract HuhToken is Context, IBEP20, Ownable {
         require(referCodeForUser[msg.sender].length == 0, "User already generated code!");
 
         _registerCode(msg.sender, code_);
-        if (rewardReferParents.length > 0)
-            _rewardReferParents();
     }
-
 
     //  -----------------------------
     //  SETTERS
     //  -----------------------------
-
-
     function whitelist(string memory refCode) external {
         bytes memory refCode_ = bytes(refCode);
         require(refCode_.length > 0, "Invalid code!");
@@ -1076,80 +901,44 @@ contract HuhToken is Context, IBEP20, Ownable {
         require(referParent[referUserForCode[refCode_]] != msg.sender, "Invalid code, A -> B -> A refer!");
 
         _whitelistWithRef(msg.sender, referUserForCode[refCode_]);
-        if (rewardReferParents.length > 0)
-            _rewardReferParents();
+        referralCount = referralCount.add(1);
     }
 
-    function transfer(address recipient, uint256 amount)
-        public
-        override
-        returns (bool)
-    {
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
 
-    function approve(address spender, uint256 amount)
-        public
-        override
-        returns (bool)
-    {
+    function approve(address spender, uint256 amount) public override returns (bool) {
         _approve(_msgSender(), spender, amount);
         return true;
     }
 
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) public override returns (bool) {
+    function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
         _transfer(sender, recipient, amount);
         _approve(
             sender,
             _msgSender(),
-            _allowances[sender][_msgSender()].sub(
-                amount,
-                "BEP20: transfer amount exceeds allowance"
-            )
-        );
+            _allowances[sender][_msgSender()].sub(amount, "BEP20: transfer amount exceeds allowance"));
         return true;
     }
 
-    function increaseAllowance(address spender, uint256 addedValue)
-        public
-        virtual
-        returns (bool)
-    {
+    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
+        _approve(_msgSender(), spender, _allowances[_msgSender()][spender].add(addedValue));
+        return true;
+    }
+
+    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
         _approve(
             _msgSender(),
             spender,
-            _allowances[_msgSender()][spender].add(addedValue)
-        );
+            _allowances[_msgSender()][spender].sub(subtractedValue, "BEP20: decreased allowance below zero"));
         return true;
     }
-
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        public
-        virtual
-        returns (bool)
-    {
-        _approve(
-            _msgSender(),
-            spender,
-            _allowances[_msgSender()][spender].sub(
-                subtractedValue,
-                "BEP20: decreased allowance below zero"
-            )
-        );
-        return true;
-    }
-
 
     //  -----------------------------
     //  GETTERS
     //  -----------------------------
-
-
     function name() public pure override returns (string memory) {
         return _NAME;
     }
@@ -1167,22 +956,16 @@ contract HuhToken is Context, IBEP20, Ownable {
     }
 
     function balanceOf(address account) public view override returns (uint256) {
-        if (_isExcluded[account])
-            return _tOwned[account];
+        if (_isExcluded[account]) return _tOwned[account];
 
         return tokenFromReflection(_rOwned[account]);
     }
 
-    function allowance(address owner, address spender)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function allowance(address owner, address spender) public view override returns (uint256) {
         return _allowances[owner][spender];
     }
 
-    function isExcludedFromReward(address account) public view returns (bool) {
+    function isExcludedFromReflection(address account) public view returns (bool) {
         return _isExcluded[account];
     }
 
@@ -1190,34 +973,45 @@ contract HuhToken is Context, IBEP20, Ownable {
         return _tFeeTotal;
     }
 
-    function reflectionFromToken(uint256 tAmount)
-        public
-        view
-        returns (uint256)
-    {
+    function reflectionFromToken(uint256 tAmount) public view returns (uint256) {
         uint256 rAmount = tAmount.mul(_getRate());
         return rAmount;
     }
 
-    function tokenFromReflection(uint256 rAmount)
-        public
-        view
-        returns (uint256)
-    {
-        require(
-            rAmount <= _rTotal,
-            "Amount must be less than total reflections"
-        );
+    function tokenFromReflection(uint256 rAmount) public view returns (uint256) {
+        require(rAmount <= _rTotal, "Amount must be less than total reflections");
         uint256 currentRate = _getRate();
         return rAmount.div(currentRate);
+    }
+
+    function getTotalCommunityReflection() public view returns (uint256) {
+        return _tFeeTotal;
+    }
+
+    function getTotalNumberOfCommunityReferral() public view returns (uint256) {
+        return referralCount;
+    }
+
+    function getTotalCommunityReferralReward() public view returns (uint256) {
+        return totalReferralReward;
+    }
+
+    function getReferralList(address account) public view returns (address[] memory) {
+        return referralList[account];
+    }
+
+    function getTotalNumberOfUserReferral(address account) public view returns (uint256) {
+        return userReferralCount[account];
+    }
+
+    function getTotalUserReferralReward(address account) public view returns (uint256) {
+        return userReferralReward[account];
     }
 
 
     //  -----------------------------
     //  INTERNAL
     //  -----------------------------
-
-
     function _getRate() private view returns (uint256) {
         (uint256 rSupply, uint256 tSupply) = _getCurrentSupply();
         return rSupply.div(tSupply);
@@ -1241,11 +1035,7 @@ contract HuhToken is Context, IBEP20, Ownable {
         return (rSupply, tSupply);
     }
 
-    function _approve(
-        address owner,
-        address spender,
-        uint256 amount
-    ) private {
+    function _approve(address owner, address spender, uint256 amount) private {
         require(owner != address(0), "BEP20: approve from the zero address");
         require(spender != address(0), "BEP20: approve to the zero address");
 
@@ -1253,26 +1043,23 @@ contract HuhToken is Context, IBEP20, Ownable {
         emit Approval(owner, spender, amount);
     }
 
-    function _transfer(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) private {
+    function _transfer(address sender, address recipient, uint256 amount) private {
         require(sender != address(0), "BEP20: transfer from the zero address");
         require(recipient != address(0), "BEP20: transfer to the zero address");
         require(amount > 0, "BEP20: Transfer amount must be greater than zero");
+
+        require(swapEnabled == true, 'Swap Is Disabled!');
+
+        if(sender != owner() && recipient != owner())
+            require(amount <= maxTxAmount, "Transfer amount exceeds the maxTxAmount");
 
         if (_inSwap) {
             _basicTransfer(sender, recipient, amount);
             return;
         }
 
-        if (rewardReferParents.length > 0 && sender != pcsV2Pair && recipient != pcsV2Pair) {
-            _rewardReferParents();
-        }
-
-        if (_shouldSwapBack() && sender != pcsV2Pair && recipient != pcsV2Pair)
-            _swapBack();
+        if (_shouldSwapBack())
+            _swapAndAddToLiquidity();
 
         if (_isExcludedFromFee[sender] || _isExcludedFromFee[recipient]) {
             _basicTransfer(sender, recipient, amount);
@@ -1295,27 +1082,6 @@ contract HuhToken is Context, IBEP20, Ownable {
             }
         }
 
-        if (!_isExcludedFromDividend[sender])
-            try distributor.setShare(sender, balanceOf(sender)) {} catch {}
-        if (!_isExcludedFromDividend[recipient])
-            try distributor.setShare(recipient, balanceOf(recipient)) {} catch {}
-
-        if (balanceOf(sender) < minTokenAmountForGetReward && !_isExcluded[sender]) {
-            _excludeFromReward(sender);
-            _setIsExcludedFromDividend(sender, true);
-        }
-
-        if (balanceOf(recipient) >= minTokenAmountForGetReward && _isExcluded[recipient]) {
-            _includeInReward(sender);
-            _setIsExcludedFromDividend(recipient, false);
-        }
-
-        if (launchedAt > 0) {
-            uint256 gas = distributorGas;
-            require(gasleft() >= gas, "Out of gas, please increase gas limit and retry!");
-            try distributor.process{gas:distributorGas}() {} catch {}
-        }
-
         if (launchedAt == 0 && recipient == pcsV2Pair) {
             launchedAt = block.number;
         }
@@ -1334,174 +1100,119 @@ contract HuhToken is Context, IBEP20, Ownable {
     function _normalBuy(address sender, address recipient, uint256 amount) private {
         uint256 currentRate = _getRate();
         uint256 rAmount = amount.mul(currentRate);
-        uint256 rBNBreflectionFee = amount.div(100).mul(BNBreflectionFeeOnBuy).mul(currentRate);
         uint256 rLiquidityFee = amount.div(100).mul(liquidityFeeOnBuy).mul(currentRate);
         uint256 rHuhdistributionFee = amount.div(100).mul(HuHdistributionFeeOnBuy).mul(currentRate);
         uint256 rMarketingFee = amount.div(100).mul(marketingFeeOnBuy).mul(currentRate);
-        uint256 rTransferAmount = rAmount.sub(rBNBreflectionFee).sub(rLiquidityFee).sub(rHuhdistributionFee).sub(rMarketingFee);
+        uint256 rTransferAmount = rAmount.sub(rLiquidityFee).sub(rHuhdistributionFee).sub(rMarketingFee);
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
-        _rOwned[address(this)] = _rOwned[address(this)].add(rBNBreflectionFee).add(rLiquidityFee);
+        _rOwned[address(this)] = _rOwned[address(this)].add(rLiquidityFee);
         if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
         if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
-        if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreflectionFee.div(currentRate)).add(rLiquidityFee.div(currentRate));
-        _liquidityAccumulated = _liquidityAccumulated.add(rLiquidityFee.div(currentRate));
-        _rOwned[marketingFeeReceiver] = _rOwned[marketingFeeReceiver].add(rMarketingFee);
-        if (_isExcluded[marketingFeeReceiver]) _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
+        if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rLiquidityFee.div(currentRate));
 
         emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
-        emit Transfer(sender, address(this), (rBNBreflectionFee.add(rLiquidityFee)).div(currentRate));
-        emit Transfer(sender, marketingFeeReceiver, rMarketingFee.div(currentRate));
+        emit Transfer(sender, address(this), (rLiquidityFee).div(currentRate));
 
+        _sendToMarketingWallet(sender, rMarketingFee.div(currentRate), rMarketingFee);
         _reflectFee(rHuhdistributionFee, rHuhdistributionFee.div(currentRate));
     }
 
     function _whitelistedBuy(address sender, address recipient, uint256 amount) private {
-        if (referParent[referParent[recipient]] == address(0)) {
-            uint256 currentRate = _getRate();
-            uint256 rAmount = amount.mul(currentRate);
-            uint256 rBNBreward1stPerson = amount.div(100).mul(BNBrewardFor1stPerson_A).mul(currentRate);
-            uint256 rLiquidityFee = amount.div(100).mul(liquidityFeeOnBuyWhiteListed_A).mul(currentRate);
-            uint256 rHuhdistributionFee = amount.div(100).mul(HuHdistributionFeeOnBuyWhiteListed_A).mul(currentRate);
-            uint256 rMarketingFee = amount.div(100).mul(marketingFeeOnBuyWhiteListed_A).mul(currentRate);
-            uint256 rTransferAmount = rAmount.sub(rBNBreward1stPerson).sub(rLiquidityFee).sub(rHuhdistributionFee).sub(rMarketingFee);
-            _rOwned[sender] = _rOwned[sender].sub(rAmount);
-            _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
-            _rOwned[address(this)] = _rOwned[address(this)].add(rBNBreward1stPerson).add(rLiquidityFee);
-            if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
-            if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
-            if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreward1stPerson.div(currentRate)).add(rLiquidityFee.div(currentRate));
-            if (rewardAmount[referParent[recipient]] > 0){
-                rewardAmount[referParent[recipient]] = rewardAmount[referParent[recipient]].add(rBNBreward1stPerson.div(currentRate));
-            } else {
-                rewardReferParents.push(referParent[recipient]);
-                rewardAmount[referParent[recipient]] = rBNBreward1stPerson.div(currentRate);
-            }
-            _liquidityAccumulated = _liquidityAccumulated.add(rLiquidityFee.div(currentRate));
-            _rOwned[marketingFeeReceiver] = _rOwned[marketingFeeReceiver].add(rMarketingFee);
-            if (_isExcluded[marketingFeeReceiver]) _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
+        uint256 currentRate = _getRate();
+        uint256 rAmount = amount.mul(currentRate);
+        uint256 tReferralRewardAmount = amount.div(100).mul(referralReward);
+        uint256 rReferralRewardAmount = tReferralRewardAmount.mul(currentRate);
+        uint256 rLiquidityFee = amount.div(100).mul(liquidityFeeOnWhiteListedBuy).mul(currentRate);
+        uint256 rHuhdistributionFee = amount.div(100).mul(HuHdistributionFeeOnBuyWhiteListed).mul(currentRate);
+        uint256 rMarketingFee = amount.div(100).mul(marketingFeeOnBuyWhiteListed).mul(currentRate);
+        uint256 rTransferAmount = rAmount.sub(rReferralRewardAmount).sub(rLiquidityFee).sub(rHuhdistributionFee).sub(rMarketingFee);
+        _rOwned[sender] = _rOwned[sender].sub(rAmount);
+        _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
+        _rOwned[address(this)] = _rOwned[address(this)].add(rLiquidityFee);
 
-            emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
-            emit Transfer(sender, address(this), (rBNBreward1stPerson.add(rLiquidityFee)).div(currentRate));
-            emit Transfer(sender, marketingFeeReceiver, rMarketingFee.div(currentRate));
+        if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
+        if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
+        if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rLiquidityFee.div(currentRate));
 
-            _reflectFee(rHuhdistributionFee, rHuhdistributionFee.div(currentRate));
-        } else {
-            uint256 currentRate = _getRate();
-            uint256 rAmount = amount.mul(currentRate);
-            uint256 rBNBreward1stPerson = amount.div(100).mul(BNBrewardFor1stPerson_B).mul(currentRate);
-            uint256 rBNBreward2ndPerson = amount.div(100).mul(BNBrewardFor2ndPerson_B).mul(currentRate);
-            uint256 rLiquidityFee = amount.div(100).mul(liquidityFeeOnBuyWhiteListed_B).mul(currentRate);
-            uint256 rHuhdistributionFee = amount.div(100).mul(HuHdistributionFeeOnBuyWhiteListed_B).mul(currentRate);
-            uint256 rMarketingFee = amount.div(100).mul(marketingFeeOnBuyWhiteListed_B).mul(currentRate);
-            uint256 rTransferAmount = rAmount.sub(rBNBreward1stPerson);
-            rTransferAmount = rTransferAmount.sub(rBNBreward2ndPerson).sub(rLiquidityFee).sub(rHuhdistributionFee).sub(rMarketingFee);
-            _rOwned[sender] = _rOwned[sender].sub(rAmount);
-            _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
-            _rOwned[address(this)] = _rOwned[address(this)].add(rBNBreward1stPerson).add(rBNBreward2ndPerson).add(rLiquidityFee);
-            if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
-            if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
-            if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreward1stPerson.div(currentRate)).add(rBNBreward2ndPerson.div(currentRate)).add(rLiquidityFee.div(currentRate));
-            if (rewardAmount[referParent[recipient]] > 0){
-                rewardAmount[referParent[recipient]] = rewardAmount[referParent[recipient]].add(rBNBreward1stPerson.div(currentRate));
-            } else {
-                rewardReferParents.push(referParent[recipient]);
-                rewardAmount[referParent[recipient]] = rBNBreward1stPerson.div(currentRate);
-            }
-            address referParent2ndPerson = referParent[referParent[recipient]];
-            if (rewardAmount[referParent2ndPerson] > 0){
-                rewardAmount[referParent2ndPerson] = rewardAmount[referParent2ndPerson].add(rBNBreward2ndPerson.div(currentRate));
-            } else {
-                rewardReferParents.push(referParent2ndPerson);
-                rewardAmount[referParent2ndPerson] = rBNBreward2ndPerson.div(currentRate);
-            }
-            _liquidityAccumulated = _liquidityAccumulated.add(rLiquidityFee.div(currentRate));
-            _rOwned[marketingFeeReceiver] = _rOwned[marketingFeeReceiver].add(rMarketingFee);
-            if (_isExcluded[marketingFeeReceiver]) _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
-
-            emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
-            emit Transfer(sender, address(this), (rBNBreward1stPerson.add(rBNBreward2ndPerson).add(rLiquidityFee)).div(currentRate));
-            emit Transfer(sender, marketingFeeReceiver, rMarketingFee.div(currentRate));
-
-            _reflectFee(rHuhdistributionFee, rHuhdistributionFee.div(currentRate));
-        }
+        emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
+        emit Transfer(sender, address(this), rLiquidityFee.div(currentRate));
+        
+        _sendToRewardDistributor(sender, referParent[recipient], tReferralRewardAmount, rReferralRewardAmount);
+        _sendToMarketingWallet(sender, rMarketingFee.div(currentRate), rMarketingFee);
+        _reflectFee(rHuhdistributionFee, rHuhdistributionFee.div(currentRate));
     }
 
     function _normalSell(address sender, address recipient, uint256 amount) private {
         uint256 currentRate = _getRate();
         uint256 rAmount = amount.mul(currentRate);
-        uint256 rBNBreflectionFee = amount.div(100).mul(BNBreflectionFeeOnSell).mul(currentRate);
         uint256 rLiquidityFee = amount.div(100).mul(liquidityFeeOnSell).mul(currentRate);
         uint256 rHuhdistributionFee = amount.div(100).mul(HuHdistributionFeeOnSell).mul(currentRate);
         uint256 rMarketingFee = amount.div(100).mul(marketingFeeOnSell).mul(currentRate);
-        uint256 rTransferAmount = rAmount.sub(rBNBreflectionFee).sub(rLiquidityFee).sub(rHuhdistributionFee).sub(rMarketingFee);
+        uint256 rTransferAmount = rAmount.sub(rLiquidityFee).sub(rHuhdistributionFee).sub(rMarketingFee);
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
-        _rOwned[address(this)] = _rOwned[address(this)].add(rBNBreflectionFee).add(rLiquidityFee);
+        _rOwned[address(this)] = _rOwned[address(this)].add(rLiquidityFee);
         if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
         if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
-        if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreflectionFee.div(currentRate)).add(rLiquidityFee.div(currentRate));
-        _liquidityAccumulated = _liquidityAccumulated.add(rLiquidityFee.div(currentRate));
-        _rOwned[marketingFeeReceiver] = _rOwned[marketingFeeReceiver].add(rMarketingFee);
-        if (_isExcluded[marketingFeeReceiver]) _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
+        if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rLiquidityFee.div(currentRate));
 
         emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
-        emit Transfer(sender, address(this), (rBNBreflectionFee.add(rLiquidityFee)).div(currentRate));
-        emit Transfer(sender, marketingFeeReceiver, rMarketingFee.div(currentRate));
+        emit Transfer(sender, address(this), rLiquidityFee.div(currentRate));
 
+        _sendToMarketingWallet(sender, rMarketingFee.div(currentRate), rMarketingFee);
         _reflectFee(rHuhdistributionFee, rHuhdistributionFee.div(currentRate));
     }
 
     function _whitelistedSell(address sender, address recipient, uint256 amount) private {
         uint256 currentRate = _getRate();
         uint256 rAmount = amount.mul(currentRate);
-        uint256 rBNBreflectionFee = amount.div(100).mul(BNBreflectionFeeOnSellWhiteListed).mul(currentRate);
-        uint256 rLiquidityFee = amount.div(100).mul(liquidityFeeOnSellWhiteListed).mul(currentRate);
-        uint256 rHuhdistributionFee = amount.div(100).mul(HuHdistributionFeeOnSellWhiteListed).mul(currentRate);
-        uint256 rMarketingFee = amount.div(100).mul(marketingFeeOnSellWhiteListed).mul(currentRate);
-        uint256 rTransferAmount = rAmount.sub(rBNBreflectionFee).sub(rLiquidityFee).sub(rHuhdistributionFee).sub(rMarketingFee);
+        uint256 rLiquidityFee = amount.div(100).mul(liquidityFeeOnWhiteListedSell).mul(currentRate);
+        uint256 rHuhdistributionFee = amount.div(100).mul(HuHdistributionFeeOnWhiteListedSell).mul(currentRate);
+        uint256 rMarketingFee = amount.div(100).mul(marketingFeeOnWhiteListedSell).mul(currentRate);
+        uint256 rTransferAmount = rAmount.sub(rLiquidityFee).sub(rHuhdistributionFee).sub(rMarketingFee);
         _rOwned[sender] = _rOwned[sender].sub(rAmount);
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
-        _rOwned[address(this)] = _rOwned[address(this)].add(rBNBreflectionFee).add(rLiquidityFee);
+        _rOwned[address(this)] = _rOwned[address(this)].add(rLiquidityFee);
         if (_isExcluded[sender]) _tOwned[sender] = _tOwned[sender].sub(amount);
         if (_isExcluded[recipient]) _tOwned[recipient] = _tOwned[recipient].add(rTransferAmount.div(currentRate));
-        if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rBNBreflectionFee.div(currentRate)).add(rLiquidityFee.div(currentRate));
-        _liquidityAccumulated = _liquidityAccumulated.add(rLiquidityFee.div(currentRate));
-        _rOwned[marketingFeeReceiver] = _rOwned[marketingFeeReceiver].add(rMarketingFee);
-        if (_isExcluded[marketingFeeReceiver]) _tOwned[marketingFeeReceiver] = _tOwned[marketingFeeReceiver].add(rMarketingFee.div(currentRate));
+        if (_isExcluded[address(this)]) _tOwned[address(this)] = _tOwned[address(this)].add(rLiquidityFee.div(currentRate));
 
         emit Transfer(sender, recipient, rTransferAmount.div(currentRate));
-        emit Transfer(sender, address(this), (rBNBreflectionFee.add(rLiquidityFee)).div(currentRate));
-        emit Transfer(sender, marketingFeeReceiver, rMarketingFee.div(currentRate));
+        emit Transfer(sender, address(this), rLiquidityFee.div(currentRate));
 
+        _sendToMarketingWallet(sender, rMarketingFee.div(currentRate), rMarketingFee);
         _reflectFee(rHuhdistributionFee, rHuhdistributionFee.div(currentRate));
     }
 
-    function _swapAndSend(address recipient, uint256 amount) private swapping {
-        address[] memory path = new address[](2);
-        path[0] = address(this);
-        path[1] = pcsV2Router.WETH();
+    function _sendToRewardDistributor(address sender, address rewardRecipient, uint256 tAmount, uint256 rAmount) private {
+        _rOwned[address(rewardDistributor)] = _rOwned[address(rewardDistributor)].add(rAmount);
+        if (_isExcluded[address(rewardDistributor)]) _tOwned[address(rewardDistributor)] = _tOwned[address(rewardDistributor)].add(tAmount);
 
-        pcsV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-            amount,
-            0,
-            path,
-            recipient,
-            block.timestamp
-        );
+        emit Transfer(sender, address(rewardDistributor), tAmount);
+        try rewardDistributor.addRewardHolderShare(rewardRecipient, tAmount) {} catch {}
+        userReferralReward[rewardRecipient] = userReferralReward[rewardRecipient].add(tAmount);
+        totalReferralReward = totalReferralReward.add(tAmount);
+    }
+
+    function _sendToMarketingWallet(address sender, uint256 tMarketingFee, uint256 rMarketingFee) private {
+        _rOwned[marketingWallet] = _rOwned[marketingWallet].add(rMarketingFee);
+        if (_isExcluded[marketingWallet]) _tOwned[marketingWallet] = _tOwned[marketingWallet].add(tMarketingFee);
+        emit Transfer(sender, marketingWallet, tMarketingFee);
     }
 
     function _shouldSwapBack() private view returns (bool) {
         return msg.sender != pcsV2Pair
             && launchedAt > 0
             && !_inSwap
-            && swapEnabled
-            && balanceOf(address(this)) >= swapThreshold;
+            && swapAndLiquifyEnabled
+            && balanceOf(address(this)) >= amountOfTokensToAddToLiquidityThreshold;
     }
 
-    function _swapBack() private swapping {
-        uint256 amountToSwap = _liquidityAccumulated.div(2);
-        uint256 amountAnotherHalf = _liquidityAccumulated.sub(amountToSwap);
+    function _swapAndAddToLiquidity() private swapping {
+        uint256 tokenAmountForLiquidity = amountOfTokensToAddToLiquidityThreshold;
+        uint256 amountToSwap = tokenAmountForLiquidity.div(2);
+        uint256 amountAnotherHalf = tokenAmountForLiquidity.sub(amountToSwap);
 
         address[] memory path = new address[](2);
         path[0] = address(this);
@@ -1514,35 +1225,21 @@ contract HuhToken is Context, IBEP20, Ownable {
             0,
             path,
             address(this),
-            block.timestamp
+            block.timestamp.add(30)
         );
 
         uint256 differenceBnb = address(this).balance.sub(balanceBefore);
 
-        pcsV2Router.addLiquidityETH{value: differenceBnb}(
+        pcsV2Router.addLiquidityETH{value: differenceBnb} (
             address(this),
             amountAnotherHalf,
             0,
             0,
             _DEAD_ADDRESS,
-            block.timestamp
+            block.timestamp.add(30)
         );
 
         emit SwapAndLiquify(differenceBnb, amountToSwap);
-
-        amountToSwap = balanceOf(address(this));
-        pcsV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-            amountToSwap,
-            0,
-            path,
-            address(this),
-            block.timestamp
-        );
-
-        _liquidityAccumulated = 0;
-
-        differenceBnb = address(this).balance;
-        try distributor.deposit{value: differenceBnb}() {} catch {}
     }
 
     function _reflectFee(uint256 rFee, uint256 tFee) private {
@@ -1550,7 +1247,7 @@ contract HuhToken is Context, IBEP20, Ownable {
         _tFeeTotal = _tFeeTotal.add(tFee);
     }
 
-    function _excludeFromReward(address account) private {
+    function _excludeFromReflection(address account) private {
         // require(account !=  0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D, 'We can not exclude PancakeSwap router.');
         require(!_isExcluded[account], "Account is already excluded");
 
@@ -1561,7 +1258,7 @@ contract HuhToken is Context, IBEP20, Ownable {
         _excluded.push(account);
     }
 
-    function _includeInReward(address account) private {
+    function _includeInReflection(address account) private {
         require(_isExcluded[account], "Account is already included");
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_excluded[i] == account) {
@@ -1578,32 +1275,18 @@ contract HuhToken is Context, IBEP20, Ownable {
         _isExcludedFromFee[account] = flag;
     }
 
-    function _setIsExcludedFromDividend(address account, bool flag) private {
-        _isExcludedFromDividend[account] = flag;
-    }
-
     function _whitelistWithRef(address account, address referee) private {
         isFirstBuy[account] = true;
         isWhitelisted[msg.sender] = true;
         referParent[msg.sender] = referee;
-
+        referralList[referee].push(account);
+        userReferralCount[referee] = userReferralCount[referee].add(1);
         emit UserWhitelisted(account, referee);
     }
 
     function _registerCode(address account, bytes memory code) private {
         referUserForCode[code] = account;
         referCodeForUser[account] = code;
-
-        emit CodeRegisterred(account, code);
-    }
-    
-    function _rewardReferParents() private {
-        if (launchedAt > 0 && rewardReferParents.length > 0){
-            while(rewardReferParents.length > 0){
-                _swapAndSend(rewardReferParents[rewardReferParents.length - 1], rewardAmount[rewardReferParents[rewardReferParents.length - 1]]);
-                rewardAmount[rewardReferParents[rewardReferParents.length - 1]] = 0;
-                rewardReferParents.pop();
-            }
-        }
+        emit RegisterCode(account, code);
     }
 }
