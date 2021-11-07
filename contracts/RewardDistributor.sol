@@ -530,7 +530,7 @@ contract RewardDistributor is IRewardDistributor, ReentrancyGuard {
     address public rewardToken;
 
     // Pancakeswap Router
-    address constant router = 0xDE2Db97D54a3c3B008a097B2260633E6cA7DB1AF;
+    address constant router = 0x10ED43C718714eb63d5aA57B78B54704E256024E;
     
     // Owner of contract
     address tokenOwner;
