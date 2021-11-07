@@ -715,7 +715,7 @@ contract HuhToken is Context, IBEP20, Ownable {
     event SetMaxTxPercent(uint256 maxTxPercent);
 
     constructor() {
-        IUniswapV2Router02 _pancakeswapV2Router = IUniswapV2Router02(0xDE2Db97D54a3c3B008a097B2260633E6cA7DB1AF);
+        IUniswapV2Router02 _pancakeswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
 
         pcsV2Pair = IUniswapV2Factory(_pancakeswapV2Router.factory()).createPair(address(this), _pancakeswapV2Router.WETH());
         pcsV2Router = _pancakeswapV2Router;
